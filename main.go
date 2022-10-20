@@ -16,9 +16,16 @@ import (
 )
 
 var (
-	tempareture = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tempareture"})
-	humidity    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "humidity"})
-	conf        = config{}
+	namespace   = "switchbot"
+	tempareture = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:      "tempareture",
+		Namespace: namespace,
+	})
+	humidity = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:      "humidity",
+		Namespace: namespace,
+	})
+	conf = config{}
 )
 
 type config struct {
@@ -49,22 +56,27 @@ func registerMetrics(ctx context.Context, cd <-chan switchBotData, errC chan<- e
 }
 
 func fetchData(ctx context.Context, cd chan<- switchBotData, errC chan<- error) {
-	ticker := time.NewTicker(conf.FetchInterval)
 	botClient := switchbot.New(conf.Token)
+	do := func() {
+		ctxFetch, cancel1 := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+		defer cancel1()
+		status, err := botClient.Device().Status(ctxFetch, conf.DeviceID)
+		if err != nil {
+			errC <- err
+			return
+		}
+		cd <- switchBotData{
+			Tempareture: status.Temperature,
+			Humidity:    float64(status.Humidity),
+		}
+	}
+	ticker := time.NewTicker(conf.FetchInterval)
+	defer ticker.Stop()
+	do()
 	for {
 		select {
 		case <-ticker.C:
-			ctxFetch, cancel1 := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancel1()
-			status, err := botClient.Device().Status(ctxFetch, conf.DeviceID)
-			if err != nil {
-				errC <- err
-				return
-			}
-			cd <- switchBotData{
-				Tempareture: status.Temperature,
-				Humidity:    float64(status.Humidity),
-			}
+			do()
 		case <-ctx.Done():
 			break
 		}
