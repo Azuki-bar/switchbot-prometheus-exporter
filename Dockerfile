@@ -8,6 +8,6 @@ RUN go build -o exporter main.go
 
 FROM gcr.io/distroless/static-debian11:nonroot AS runner
 
-COPY --chown=nonroot:nonroot /app/exporter /exporter
+COPY --chown=nonroot:nonroot --from=builder /app/exporter /exporter
 ENTRYPOINT [ "/exporter" ]
 
