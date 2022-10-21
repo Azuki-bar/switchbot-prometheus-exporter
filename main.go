@@ -18,12 +18,12 @@ import (
 var (
 	namespace   = "switchbot"
 	tempareture = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:      "tempareture",
 		Namespace: namespace,
+		Name:      "tempareture",
 	})
 	humidity = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:      "humidity",
 		Namespace: namespace,
+		Name:      "humidity",
 	})
 	conf = config{}
 )
@@ -40,7 +40,7 @@ type switchBotData struct {
 }
 
 func (s switchBotData) String() string {
-	return fmt.Sprintf("Temp: %.2f, Hum: %d", s.Tempareture, s.Humidity)
+	return fmt.Sprintf("Temp: %.1f, Hum: %d", s.Tempareture, s.Humidity)
 }
 func registerMetrics(ctx context.Context, cd <-chan switchBotData, errC chan<- error) {
 LOOP:
@@ -66,7 +66,6 @@ func fetchData(ctx context.Context, cd chan<- switchBotData, errC chan<- error) 
 			errC <- err
 			return
 		}
-		log.Println(status)
 		cd <- switchBotData{
 			Tempareture: status.Temperature,
 			Humidity:    status.Humidity,
