@@ -36,47 +36,49 @@ type config struct {
 }
 type switchBotData struct {
 	Tempareture float64
-	Humidity    float64
+	Humidity    int
 }
 
 func (s switchBotData) String() string {
-	return fmt.Sprintf("temp: %.2f, Hum: %.2f", s.Tempareture, s.Humidity)
+	return fmt.Sprintf("Temp: %.2f, Hum: %d", s.Tempareture, s.Humidity)
 }
 func registerMetrics(ctx context.Context, cd <-chan switchBotData, errC chan<- error) {
+LOOP:
 	for {
 		select {
 		case d := <-cd:
-			log.Printf("set %s\n", d.String())
+			log.Printf("set %s\n", d)
 			tempareture.Set(d.Tempareture)
-			humidity.Set(d.Humidity)
+			humidity.Set(float64(d.Humidity))
 		case <-ctx.Done():
-			break
+			break LOOP
 		}
 	}
 }
 
 func fetchData(ctx context.Context, cd chan<- switchBotData, errC chan<- error) {
 	botClient := switchbot.New(conf.Token)
-	do := func() {
-		ctxFetch, cancel1 := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+	do := func(ctx context.Context) {
+		ctxFetch, cancel1 := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel1()
 		status, err := botClient.Device().Status(ctxFetch, conf.DeviceID)
 		if err != nil {
 			errC <- err
 			return
 		}
+		log.Println(status)
 		cd <- switchBotData{
 			Tempareture: status.Temperature,
-			Humidity:    float64(status.Humidity),
+			Humidity:    status.Humidity,
 		}
 	}
 	ticker := time.NewTicker(conf.FetchInterval)
 	defer ticker.Stop()
-	do()
+	do(ctx)
 	for {
 		select {
 		case <-ticker.C:
-			do()
+			go do(ctx)
 		case <-ctx.Done():
 			break
 		}
@@ -111,12 +113,19 @@ func main() {
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Print("trap err")
-	case err := <-errC:
-		log.Print(err)
-		cancel()
+LOOP:
+	for {
+		select {
+		case <-ctx.Done():
+			log.Print(ctx.Err())
+			log.Print("main context is done!")
+			break LOOP
+		case err := <-errC:
+			if err != nil {
+				log.Print(err)
+				cancel()
+			}
+		}
 	}
 
 	if err := srv.Shutdown(ctx); err != nil {
