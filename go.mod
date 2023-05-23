@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/caarlos0/env/v7 v7.0.0
+	github.com/caarlos0/env/v8 v8.0.0
 	github.com/nasa9084/go-switchbot v0.3.0
 	github.com/prometheus/client_golang v1.14.0
 )
