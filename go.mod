@@ -3,6 +3,7 @@ module github.com/azuki-bar/switchbot-prometheus-exporter
 go 1.19
 
 require (
+	github.com/caarlos0/env/v10 v10.0.0
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/caarlos0/env/v7 v7.1.0
 	github.com/nasa9084/go-switchbot v0.3.0
